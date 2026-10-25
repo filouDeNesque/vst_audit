@@ -232,6 +232,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 .result.ko { border-left: 3px solid var(--v-invalide); }
 .result pre { margin: 6px 0 0; max-height: 240px; overflow: auto; font-size: 10.5px; }
 .result summary { cursor: pointer; color: var(--muted); margin-top: 4px; }
+.probe-capture { display: block; max-width: 100%; margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r); }
+.probe-status { margin-top: 6px; }
 .form-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .form-row input[type=text] { flex: 1 1 200px; }
 

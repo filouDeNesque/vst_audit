@@ -159,6 +159,11 @@ uv run vst-audit uad --suivi    # suivi UADx dans le terminal</pre>
           <dt>Finder</dt><dd>Sélectionne le bundle dans le Finder.</dd>
           <dt>Signature</dt><dd>Vérifie la signature de code (<code>codesign</code>) et affiche le développeur.</dd>
           <dt>auval</dt><dd>Lance la validation Apple d'une Audio Unit (peut prendre quelques secondes).</dd>
+          <dt>Sonder ce plugin</dt><dd>Vérification active : charge le plugin dans un processus séparé, laisse sa
+            vérification de licence aboutir, analyse le son qu'il produit (traité, muet, ou passé tel quel) et, en option,
+            ouvre son interface quelques secondes pour y lire son état (« not activated », « 4 activations left »,
+            « TRY UNLICENSED »…). Résultat et capture dans <code>data/sondes.json</code> et <code>data/sondes/</code>.
+            En terminal : <code>vst-audit sonder</code>.</dd>
           <dt>Lire le journal UA</dt><dd>UADx uniquement : relit l'état de licence écrit par le plugin.</dd>
         </dl>
       </div>

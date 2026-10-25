@@ -116,6 +116,84 @@ def uad_cmd(
     report.uad_report([p.to_dict() for p in plugins], len(ua_sources.uadx_states()), profile_info)
 
 
+@app.command("sonder")
+def probe_cmd(
+    vendor: VendorOpt = None,
+    status: Annotated[Optional[str], typer.Option("--statut", "-s", help="Statut à sonder (défaut : à vérifier)")] = "à vérifier",
+    name: Annotated[Optional[str], typer.Option("--plugin", "-p", help="Nom (ou partie du nom) d'un plugin")] = None,
+    limit: Annotated[int, typer.Option("--limite", "-n", help="Nombre maximum de plugins")] = 0,
+    no_gui: Annotated[bool, typer.Option("--sans-interface", help="Ne pas ouvrir l'interface (son seulement)")] = False,
+    redo: Annotated[bool, typer.Option("--refaire", help="Resonder même les plugins déjà sondés avec succès")] = False,
+    yes: Annotated[bool, typer.Option("--oui", "-y", help="Ne pas demander de confirmation")] = False,
+    verbose: Verbose = 0,
+) -> None:
+    """Vérification active : charge chaque plugin, écoute ce qu'il produit et lit son interface."""
+    from rich.table import Table as RichTable
+
+    from . import sonde
+    from .grouping import group_plugins
+    from .report import badge
+
+    _check_status(status if status != "tous" else None)
+    setup_logging(verbose)
+    if solved := sonde.reclassify_stored():
+        console.print(f"[green]{solved} ancien(s) résultat(s) reclassé(s)[/] avec la logique actuelle, sans resonder")
+    result = pipeline.run_scan()
+    groups = group_plugins([p.to_dict() for p in result.plugins])
+    done = sonde.load()
+    todo = [g for g in groups
+            if (not vendor or vendor.lower() in g.vendor.lower())
+            and (not name or name.lower() in g.name.lower())
+            and (name or status in (None, "tous") or g.verdict.value == status)
+            and (redo or sonde.needs_probe(done.get(g.key)))]
+    # les plugins non sondables (Intel, plugins-hôtes) sont seulement notés, sans être chargés
+    todo = [g for g in todo if not sonde.unprobeable(g.items)] + [g for g in todo if sonde.unprobeable(g.items)]
+    if limit:
+        todo = todo[:limit]
+    if not todo:
+        console.print("[green]Rien à sonder.[/] (--refaire pour resonder, --statut tous pour élargir)")
+        return
+
+    per = 10 if no_gui else 25
+    loadable = sum(1 for g in todo if not sonde.unprobeable(g.items))
+    console.print(f"[bold]{len(todo)} plugin(s)[/] dont {loadable} à charger · environ {loadable * per // 60 + 1} min"
+                  + ("" if no_gui or not loadable else " · [yellow]leurs fenêtres vont s'ouvrir quelques secondes à l'écran[/]"))
+    if loadable > 5 and not yes and not typer.confirm("Continuer ?", default=True):
+        raise typer.Exit()
+
+    rows = []
+    with Progress(SpinnerColumn(), TextColumn("[bold]{task.description}"), BarColumn(), MofNCompleteColumn(),
+                  TimeElapsedColumn(), console=console, transient=True) as progress:
+        task = progress.add_task("Sonde", total=len(todo))
+        failures: dict[str, int] = {}  # échecs consécutifs (plantage / blocage) par éditeur
+        preferred: dict[str, str] = {}  # format qui a fonctionné après un repli, par éditeur
+        for g in todo:
+            if failures.get(g.vendor, 0) >= 3:
+                console.print(f"[dim]↷ {g.name} : ignoré, 3 échecs de suite chez {g.vendor} (relancez avec -e pour réessayer)[/]")
+                progress.advance(task)
+                continue
+            progress.update(task, description=f"Sonde · {g.name[:40]}")
+            entry = sonde.probe_group(g.key, g.name, g.vendor, g.items, gui=not no_gui, prefer=preferred.get(g.vendor))
+            raw = entry["raw"]
+            if any(e.startswith("essais ratés") for e in entry["evidence"]) and not (raw.get("crash") or raw.get("timeout")):
+                preferred[g.vendor] = entry["format"]  # le repli a marché : on commence par ce format
+            failures[g.vendor] = failures.get(g.vendor, 0) + 1 if (raw.get("crash") or raw.get("timeout")) else 0
+            rows.append((g, entry))
+            verdict = {"licencié": Verdict.OK, "clé requise": Verdict.KEY_REQUIRED, "démo": Verdict.DEMO,
+                       "non acquis": Verdict.NOT_OWNED}.get(entry["status"] or "", Verdict.TO_CHECK)
+            console.print(badge(verdict), f"[bold]{g.name}[/] [dim]{g.vendor} · {entry['format'] or '—'}[/] — {entry['label']}")
+            progress.advance(task)
+
+    table = RichTable(title="Résultats de la sonde", title_justify="left", title_style="bold")
+    table.add_column("Résultat")
+    table.add_column("Plugins", justify="right")
+    from collections import Counter
+    for label, n in Counter(e["status"] or "non concluant" for _, e in rows).most_common():
+        table.add_row(label, str(n))
+    console.print(table)
+    console.print("[dim]Résultats pris en compte par scan et par l'interface web · détails : data/sondes.json[/]")
+
+
 @app.command("historique")
 def history(limit: Annotated[int, typer.Option("--limite", "-n")] = 20) -> None:
     """Liste les analyses enregistrées."""

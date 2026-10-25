@@ -158,3 +158,16 @@ def test_inmusic_unlock_files(tmp_path):
     (tmp_path / "AIVD1").write_text("x")
     assert inmusic.unlocked_products.__wrapped__(tmp_path) == ["AIVD1", "AKMP3"]
     assert inmusic.describe(["AKMP3", "AIVD1"]) == "AKMP3 (MPC 3), AIVD1"
+
+
+def test_non_dns_bundle_ids_and_unknown_vendor():
+    from vst_audit.models import company_from_bundle_id
+
+    assert company_from_bundle_id("com.uaudio.effects.58AU") == "uaudio"
+    assert company_from_bundle_id("Kontakt.MusicDevice.component") == ""
+    au = make("Kontakt", vendor="Native Instruments", fmt=Format.AU, path="/c/Kontakt.component",
+              bundle_id="Kontakt.MusicDevice.component", vendor_from_metadata=True)
+    vst3 = make("Kontakt", vendor="Inconnu", fmt=Format.VST3, path="/v/Kontakt.vst3", bundle_id="Kontakt.vst3")
+    canonicalize_vendors([au, vst3])
+    assert vst3.vendor == "Native Instruments"
+    assert len(group_plugins([au.to_dict(), vst3.to_dict()])) == 1

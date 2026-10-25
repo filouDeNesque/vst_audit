@@ -35,6 +35,7 @@ const VERDICTS = [
 ];
 const V = Object.fromEntries(VERDICTS.map((x, i) => [x.v, { ...x, rank: i }]));
 const LICENSES = ["licencié", "gratuit", "démo", "non acquis", "clé requise"];
+const PROBE_VERDICT = { "licencié": "fonctionnel", "clé requise": "clé requise", "démo": "démo", "non acquis": "non acquis" };
 const TIP_ICON = { "clé": "key", uad: "info", non_acquis: "noentry", invalide: "close", nettoyage: "scissors" };
 const TIP_COLOR = { "clé": "--v-cle", uad: "--v-verifier", non_acquis: "--v-nonacquis", invalide: "--v-invalide", nettoyage: "--v-invalide" };
 
@@ -253,6 +254,24 @@ function renderDrawer(d) {
       ${override ? `<button class="btn ghost" id="ov-reset" title="Supprimer le statut défini">Revenir à l'auto</button>` : ""}
     </div>
 
+    <h3>Vérification active</h3>
+    ${d.probe ? `
+      <dl class="kv">
+        <dt>Résultat</dt><dd>${d.probe.status ? badge(PROBE_VERDICT[d.probe.status] || "à vérifier") : `<span class="muted">non concluant</span>`} ${esc(d.probe.label)}</dd>
+        <dt>Sondé le</dt><dd>${dateFr(d.probe.date)} · ${esc(d.probe.format || "")}</dd>
+        ${d.probe.evidence.length ? `<dt>Indices</dt><dd>${d.probe.evidence.map((e) => esc(e)).join("<br>")}</dd>` : ""}
+      </dl>
+      ${d.probe.capture ? `<a href="/api/plugin/probe-capture?key=${encodeURIComponent(d.key)}&t=${encodeURIComponent(d.probe.date)}" target="_blank">
+        <img class="probe-capture" alt="Interface du plugin lors de la sonde" src="/api/plugin/probe-capture?key=${encodeURIComponent(d.key)}&t=${encodeURIComponent(d.probe.date)}"></a>` : ""}`
+      : `<p class="muted small">Charge le plugin, écoute ce qu'il produit et lit son interface (écran d'activation, mode démo…).</p>`}
+    ${d.probe_possible ? `
+      <div class="form-row">
+        <label class="check"><input type="checkbox" id="probe-gui" checked> lire son interface</label>
+        <button class="btn primary" id="probe-run">${ic("pulse")} ${d.probe ? "Resonder" : "Sonder ce plugin"}</button>
+      </div>
+      <div class="probe-status muted small"></div>`
+      : `<p class="muted small">Non sondable : ${esc(d.probe_blocked || "")}.</p>`}
+
     ${d.ua_plugin_id ? `
       <h3>Universal Audio</h3>
       <dl class="kv">
@@ -299,6 +318,18 @@ function renderDrawer(d) {
   if (reset) reset.onclick = (e) => busy(e.target, async () => {
     renderDrawer(await api("DELETE", `/api/plugin/override?key=${encodeURIComponent(d.key)}`));
     toast("Retour à la détection automatique");
+    await reloadLiveSilently();
+  });
+
+  const probe = $("#probe-run", body);
+  if (probe) probe.onclick = () => busy(probe, async () => {
+    const gui = $("#probe-gui", body).checked;
+    $(".probe-status", body).textContent = gui
+      ? "Sonde en cours (≈ 25 s) : la fenêtre du plugin va s'ouvrir puis se refermer…"
+      : "Sonde en cours (≈ 15 s)…";
+    const updated = await api("POST", "/api/plugin/probe", { key: d.key, gui });
+    renderDrawer(updated);
+    toast(updated.probe ? `Sonde : ${updated.probe.label}` : "Sonde terminée");
     await reloadLiveSilently();
   });
 

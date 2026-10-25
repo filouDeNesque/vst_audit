@@ -14,7 +14,7 @@ import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
-from .models import Format, Health, Plugin
+from .models import Format, Health, Plugin, company_from_bundle_id, normalize
 
 log = logging.getLogger(__name__)
 
@@ -127,8 +127,8 @@ def _read_moduleinfo(bundle: Path) -> dict:
 
 
 def _vendor_from_bundle_id(bundle_id: str) -> str:
-    parts = bundle_id.split(".")
-    return parts[1] if len(parts) > 2 else ""
+    company = company_from_bundle_id(bundle_id)
+    return bundle_id.split(".")[1] if company else ""  # casse d'origine
 
 
 def _find_binary(bundle: Path, executable: str | None) -> Path | None:
@@ -212,6 +212,11 @@ def canonicalize_vendors(plugins: list[Plugin]) -> None:
         if not p.vendor_from_metadata:
             p.vendor = (by_company.get(_vendor_from_bundle_id(p.bundle_id).lower())
                         or by_compact.get(_compact(p.vendor)) or p.vendor)
+    # éditeur toujours inconnu : on reprend celui d'un bundle du même nom (« Kontakt.vst3 » / « Kontakt.component »)
+    by_stem = {normalize(Path(p.path).stem): p.vendor for p in plugins if p.vendor_from_metadata}
+    for p in plugins:
+        if p.vendor == "Inconnu":
+            p.vendor = by_stem.get(normalize(Path(p.path).stem), p.vendor)
     # variantes d'un même nom (« Valhalla DSP, LLC » / « ValhallaDSP ») : la plus fréquente gagne
     counts: dict[str, dict[str, int]] = {}
     for p in plugins:

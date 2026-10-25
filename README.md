@@ -10,6 +10,30 @@ Chaque analyse est enregistrée, ce qui permet de **comparer** une analyse avec 
 
 Aucun plugin n'est chargé ni modifié. L'outil lit seulement les fichiers sur le disque.
 
+## Aperçu
+
+L'interface web (`uv run vst-audit web`) reprend le thème et la police d'Ableton Live.
+
+**Tableau de bord** : répartition des statuts, conseils « À faire », synthèse par éditeur.
+
+![Tableau de bord](docs/screenshots/dashboard.png)
+
+**Plugins** : tableau filtrable et triable ; un même plugin n'occupe qu'une ligne, ses formats cassés sont barrés.
+
+![Liste des plugins](docs/screenshots/plugins.png)
+
+**Détail d'un plugin** : licence, remarques, chaque format avec son chemin, son architecture et son état dans Ableton, Logic et MPC 3, et les actions possibles (statut, Finder, signature, auval).
+
+![Détail d'un plugin](docs/screenshots/detail.png)
+
+**UAD** : licences Universal Audio lues dans les journaux UA (achats, Spark, démos) et suivi des UADx un par un.
+
+![Onglet UAD](docs/screenshots/uad.png)
+
+**Terminal** (`uv run vst-audit scan`) : la même analyse, dans la console.
+
+![Analyse dans le terminal](docs/screenshots/cli-scan.svg)
+
 ## Installation
 
 ```bash
@@ -28,6 +52,9 @@ uv run vst-audit scan -v                 # plus de logs (-vv pour le débogage)
 
 uv run vst-audit uad                     # licences UAD : achats, Spark, démos
 uv run vst-audit uad --suivi             # ouvrir les UADx inconnus un par un et noter leur état
+uv run vst-audit sonder                  # vérification active des plugins « à vérifier »
+uv run vst-audit sonder -e arturia --statut tous   # … d'un éditeur, quel que soit leur statut
+uv run vst-audit sonder -p "Mini V3" --refaire     # … d'un plugin précis
 uv run vst-audit historique              # liste des analyses
 uv run vst-audit voir 3                  # réaffiche l'analyse n° 3 sans rescanner
 uv run vst-audit comparer                # avant-dernière analyse → dernière
@@ -55,6 +82,7 @@ Actions disponibles depuis le détail d'un plugin :
 - le montrer dans le Finder ou copier son chemin ;
 - vérifier sa signature (`codesign`) ;
 - valider une Audio Unit (`auval`) ;
+- le sonder (vérification active, voir plus bas) ;
 - relire le journal de licence d'un UADx.
 
 L'apparence reprend celle d'Ableton Live : les couleurs du thème choisi dans Live (lu dans `Preferences.cfg` et dans les fichiers `.ask` de l'application) et la police Ableton Sans, servie depuis l'application Live installée (rien n'est copié dans le projet). Un sélecteur permet d'essayer les autres thèmes de Live ; sans Live, les couleurs de « Default Dark Neutral Medium » s'appliquent.
@@ -88,6 +116,36 @@ Un même plugin peut être installé en plusieurs formats (AU, VST3, VST2). Ils 
 | ⏸ désactivé | Plugin désactivé dans une DAW |
 | ? à vérifier | Plugin techniquement OK, mais sa licence n'a pas pu être déterminée |
 | ✔ fonctionnel | Plugin OK et licence confirmée (ou plugin gratuit) |
+
+## Vérification active (`vst-audit sonder`)
+
+Quand les fichiers ne disent rien, on observe le plugin en fonctionnement. Chaque plugin est chargé dans un processus séparé (un plantage n'emporte que la sonde) :
+
+1. **Licence** : la boucle d'événements macOS tourne quelques secondes, le temps que les vérifications asynchrones aboutissent. Effet utile : les UADx écrivent alors leur état PACE à jour dans leur journal UA.
+2. **Son** : un signal test (1 s de son, 1 s de silence) ou des notes MIDI pour un instrument. Le plugin peut traiter le son, rester muet (bloqué sur un écran d'activation) ou le laisser passer intact (c'est ce que fait un UADx non licencié).
+3. **Interface** (option, activée par défaut) : la fenêtre du plugin s'ouvre une dizaine de secondes, est capturée, puis son texte est lu par l'OCR de macOS (Vision). Les écrans « This software is not activated on this computer · 4 activations left » (Arturia) ou « Activate your product · TRY UNLICENSED » (AIR) donnent l'état exact. Les e-mails sont masqués dans les résultats.
+
+| Ce que la sonde observe | Statut |
+|---|---|
+| « not activated », « activations left » | clé requise (licence possédée, à réactiver sur ce Mac) |
+| « activate your product », « try unlicensed », « serial key » | clé requise (non activé) |
+| « trial », « demo » | démo |
+| « expired » | non acquis |
+| assistant d'activation PACE / iLok lancé au chargement | clé requise (protection iLok) |
+| fenêtre ouverte au chargement avec un des textes ci-dessus | même statut |
+| son passé intact (UADx natifs) | non acquis |
+| interface lisible sans écran de licence (même muet ou neutre par défaut) | fonctionnel |
+| plantage, blocage, interface illisible | non concluant |
+
+Garde-fous :
+
+- **Repli de format** : si l'AU plante ou bloque (fréquent avec un sidechain ou plusieurs bus), le VST3 est essayé. Pendant une session, un éditeur pour qui le repli a marché commence directement par le VST3.
+- **Délais par étape** : rendu audio 30 s, interface 45 s. Si l'interface bloque, le résultat audio déjà mesuré est conservé.
+- **Vigie au chargement** (après 20 s) : si l'assistant PACE tourne ou si une fenêtre est ouverte, on la lit et on arrête la sonde. Sans fenêtre, le plugin est seulement lent (Kontakt : ~30 s) et on attend.
+- **Plugins écartés d'avance** : les plugins-hôtes (MPC, Nektarine…), qui plantent l'hôte de test, et les UAD-2 quand aucun Apollo n'est branché (ils affichent une alerte bloquante).
+- **Disjoncteur** : après 3 échecs de suite chez un même éditeur, ses plugins suivants sont sautés pour la session.
+
+Seuls les AU et VST3 natifs Apple Silicon peuvent être chargés : un plugin Intel uniquement n'est pas sondable. Comptez environ 25 s par plugin avec l'interface, 10 s sans (`--sans-interface`). Résultats : `data/sondes.json` et les captures dans `data/sondes/`. Dans l'interface web, le bouton **Sonder ce plugin** se trouve dans le panneau de détail.
 
 ## Déclarer ses licences : `config/licences.toml`
 
@@ -132,7 +190,7 @@ Codes d'Ableton (`scanstate`) : 1 signifie que le scan a réussi. Les codes 2 et
 src/vst_audit/
   discovery.py     recherche des bundles, Info.plist, architecture Mach-O, signature, quarantaine
   hosts/           état des plugins vu par chaque DAW (ableton.py, logic.py, mpc.py)
-  licenses/        détecteurs de licence, essayés dans l'ordre : manual → uad → izotope → inmusic → free
+  licenses/        détecteurs de licence, essayés dans l'ordre : manual → uad → sonde → izotope → inmusic → free (le premier résultat concluant l'emporte)
   grouping.py      regroupement des formats d'un même plugin
   store.py         historique SQLite et instantanés JSON
   diff.py          comparaison de deux analyses
@@ -144,6 +202,7 @@ src/vst_audit/
   overrides.py     statuts définis depuis l'interface
   suivi.py         suivi UADx (terminal et web)
   actions.py       Finder, codesign, auval, journal UA
+  sonde/           vérification active : worker.py (processus de sonde) et classement des résultats
   theme.py         thème Ableton Live (couleurs .ask, police Ableton Sans) pour l'interface
   vendors.py       outil ou compte où récupérer ses licences, par éditeur
 ```
@@ -156,5 +215,6 @@ src/vst_audit/
 
 - **Masquer les plugins non acquis** (UAD) dans Logic, Ableton et MPC : les déplacer vers un dossier de quarantaine, avec possibilité de restaurer.
 - **`auval`** : valider les AU à la demande (`auval -v type sous-type fabricant`).
+- **Sonde** : reconnaître d'autres écrans d'activation (iLok, Native Access…) au fil des plugins sondés.
 - **iLok / PACE** : repérer les plugins protégés par iLok, dont la licence est liée au compte et donc récupérable.
 - Détecteurs pour d'autres éditeurs : Native Instruments, Arturia, Softube, Slate…

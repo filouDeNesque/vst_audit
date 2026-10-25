@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from . import config, discovery, hosts, licenses, overrides, suivi
+from . import config, discovery, hosts, licenses, overrides, sonde, suivi
 from .licenses import ua_sources
 from .models import Health, Plugin
 
@@ -35,6 +35,8 @@ def clear_caches() -> None:
     suivi.notes.cache_clear()
     overrides.index.cache_clear()
     licenses.inmusic.unlocked_products.cache_clear()
+    sonde.index.cache_clear()
+    sonde.apollo_present.cache_clear()
 
 
 def check_signature(p: Plugin) -> None:

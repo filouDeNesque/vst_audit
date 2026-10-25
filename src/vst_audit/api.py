@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, actions, config, insights, overrides, pipeline, store, suivi, theme
+from . import __version__, actions, config, insights, overrides, pipeline, sonde, store, suivi, theme
 from .diff import ScanDiff, compare
 from .grouping import PluginGroup, group_plugins
 from .licenses import ua_sources
@@ -86,7 +86,12 @@ def group_json(g: PluginGroup, full: bool = False) -> dict:
     if full:
         data["items"] = g.items
         data["portal"] = portal_for(g.vendor)
-        data["override"] = overrides.lookup(sorted({k for i in g.items for k in i["group_keys"]}))
+        keys = sorted({k for i in g.items for k in i["group_keys"]})
+        data["override"] = overrides.lookup(keys)
+        probe = sonde.lookup(keys)
+        data["probe"] = sonde.finding_dict(probe) if probe else None
+        data["probe_blocked"] = sonde.unprobeable(g.items)
+        data["probe_possible"] = data["probe_blocked"] is None
         if data["uad_family"] == "UADx natif":
             data["ua_plugin_id"] = Path(main["path"]).stem.removesuffix("(m)")
             data["ua_suivi"] = suivi.load().get(data["ua_plugin_id"])
@@ -249,6 +254,37 @@ def delete_override(key: str) -> dict:
     overrides.remove(key)
     live.get(refresh=True)
     return group_json(_group(key), full=True)
+
+
+class ProbeIn(BaseModel):
+    key: str
+    gui: bool = Field(True, description="ouvrir l'interface du plugin pour y lire son état de licence")
+
+
+probe_lock = threading.Lock()
+
+
+@app.post("/api/plugin/probe", tags=["actions"], summary="Vérification active : charger le plugin et l'observer")
+def probe_plugin(body: ProbeIn) -> dict:
+    g = _group(body.key)
+    if not probe_lock.acquire(blocking=False):
+        raise HTTPException(409, "une sonde est déjà en cours")
+    try:
+        sonde.probe_group(g.key, g.name, g.vendor, g.items, gui=body.gui)
+    finally:
+        probe_lock.release()
+    live.get(refresh=True)
+    return group_json(_group(body.key), full=True)
+
+
+@app.get("/api/plugin/probe-capture", tags=["actions"], summary="Capture de l'interface prise par la sonde")
+def probe_capture(key: str) -> FileResponse:
+    g = _group(key)
+    entry = sonde.lookup(sorted({k for i in g.items for k in i["group_keys"]}))
+    path = sonde.CAPTURES_DIR / entry["capture"] if entry and entry.get("capture") else None
+    if not path or not path.is_file():
+        raise HTTPException(404, "aucune capture")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 
 @app.post("/api/plugin/reveal", tags=["actions"], summary="Montrer le bundle dans le Finder")

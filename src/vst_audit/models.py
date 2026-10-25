@@ -89,8 +89,7 @@ class Plugin:
     def group_keys(self) -> list[str]:
         """Clés partagées par les différents formats d'un même plugin : même nom de
         bundle (« UAD Pultec EQP-1A.vst3 » / « .component ») ou même nom affiché."""
-        company = self.bundle_id.split(".")[1].lower() if self.bundle_id.count(".") >= 2 else ""
-        owner = company or normalize(self.vendor)
+        owner = company_from_bundle_id(self.bundle_id) or normalize(self.vendor)
         stem = re.sub(r"\(m\)$", "", PurePath(self.path).stem)  # variantes mono VST2 de UAD
         return [f"{owner}|f:{normalize(stem)}", f"{owner}|n:{normalize(self.name)}"]
 
@@ -131,6 +130,17 @@ class Plugin:
 
 
 _STRIP = re.compile(r"[^a-z0-9]+")
+
+# premiers segments d'un identifiant en notation DNS inversée (« com.uaudio.effects.58AU »)
+_TLDS = {"com", "net", "org", "io", "co", "audio", "de", "fr", "uk", "nl", "se", "ch", "it", "es", "be",
+         "at", "dk", "no", "fi", "pl", "cz", "jp", "au", "nz", "ca", "us", "ru", "pt", "hu", "gr", "is"}
+
+
+def company_from_bundle_id(bundle_id: str) -> str:
+    """« com.uaudio.effects.58AU » -> « uaudio ». Vide si l'identifiant n'est pas en notation DNS inversée :
+    certains éditeurs écrivent « Kontakt.MusicDevice.component », dont le 2e segment ne dit rien."""
+    parts = bundle_id.split(".")
+    return parts[1].lower() if len(parts) > 2 and parts[0].lower() in _TLDS else ""
 
 
 def normalize(text: str) -> str:
