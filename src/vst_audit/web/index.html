@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vst-audit</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛</text></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">🎛</span> vst-audit</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="dashboard">Tableau de bord</button>
+      <button class="tab" data-view="plugins">Plugins</button>
+      <button class="tab" data-view="uad">UAD</button>
+      <button class="tab" data-view="history">Historique</button>
+      <button class="tab" data-view="docs">Documentation</button>
+    </nav>
+    <div class="source">
+      <span id="source-label" class="source-label">…</span>
+      <button id="btn-live" class="btn ghost hidden" title="Revenir à l'analyse en direct">↺ Direct</button>
+      <button id="btn-refresh" class="btn" title="Relancer l'analyse en direct">⟳ Actualiser</button>
+      <button id="btn-save" class="btn primary" title="Lancer une analyse et l'enregistrer dans l'historique">💾 Enregistrer</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Tableau de bord -->
+    <section id="view-dashboard" class="view active">
+      <div id="stat-cards" class="cards"></div>
+      <div id="distribution" class="distribution"></div>
+      <div class="grid-2">
+        <div class="panel">
+          <h2>À faire</h2>
+          <ul id="todo" class="todo"></ul>
+        </div>
+        <div class="panel">
+          <h2>Formats installés</h2>
+          <div id="formats" class="formats"></div>
+          <h2 class="mt">DAW lues</h2>
+          <div id="hosts" class="muted"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Par éditeur <span class="muted small">(cliquez pour filtrer)</span></h2>
+        <div class="table-wrap"><table id="vendors-table" class="table compact"></table></div>
+      </div>
+    </section>
+
+    <!-- Plugins -->
+    <section id="view-plugins" class="view">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Rechercher un plugin, un éditeur…" autocomplete="off">
+        <select id="filter-vendor"><option value="">Tous les éditeurs</option></select>
+        <select id="filter-format">
+          <option value="">Tous les formats</option>
+          <option>AU</option><option>VST3</option><option>VST2</option><option>CLAP</option>
+        </select>
+        <label class="check"><input id="filter-stale" type="checkbox"> Formats à nettoyer</label>
+        <button id="btn-clear" class="btn ghost">Effacer les filtres</button>
+      </div>
+      <div id="verdict-chips" class="chips"></div>
+      <div class="muted small" id="plugins-count"></div>
+      <div class="table-wrap">
+        <table id="plugins-table" class="table clickable">
+          <thead><tr>
+            <th data-sort="verdict">Statut</th>
+            <th data-sort="name">Plugin</th>
+            <th data-sort="vendor">Éditeur</th>
+            <th>Formats</th>
+            <th data-sort="version">Version</th>
+            <th data-sort="license">Licence</th>
+            <th>Remarques</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- UAD -->
+    <section id="view-uad" class="view">
+      <div id="uad-sources" class="cards"></div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Suivi des UADx sans état connu</h2>
+          <div id="uad-progress" class="progress"><div></div><span></span></div>
+        </div>
+        <p class="muted small">
+          Ouvrez le plugin dans une DAW, puis cliquez sur <b>Lire le journal</b> : l'état écrit par le plugin
+          (acheté, Spark, démo) s'affiche et peut être validé. Sinon, notez ce que vous constatez.
+          Avec l'Apollo branché, un plugin hybride peut tourner sur le DSP sans écrire de licence :
+          passez-le en mode natif.
+        </p>
+        <div class="table-wrap"><table id="uad-suivi" class="table"></table></div>
+      </div>
+      <div class="panel">
+        <h2>Tous les plugins Universal Audio</h2>
+        <div id="uad-families"></div>
+      </div>
+    </section>
+
+    <!-- Historique -->
+    <section id="view-history" class="view">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Analyses enregistrées</h2>
+          <button id="btn-compare" class="btn" disabled>Comparer la sélection</button>
+        </div>
+        <p class="muted small">Cochez deux analyses pour les comparer. « Ouvrir » affiche une analyse passée dans les autres onglets.</p>
+        <div class="table-wrap"><table id="scans-table" class="table"></table></div>
+      </div>
+      <div id="diff" class="panel hidden"></div>
+    </section>
+
+    <!-- Documentation -->
+    <section id="view-docs" class="view docs">
+      <div class="panel">
+        <h2>Démarrage</h2>
+        <p>vst-audit analyse les plugins installés dans <code>/Library/Audio/Plug-Ins</code> et
+          <code>~/Library/Audio/Plug-Ins</code> (VST2, VST3, AU, CLAP). Aucun plugin n'est chargé ni modifié :
+          seuls les fichiers sur disque sont lus.</p>
+        <ul>
+          <li><b>⟳ Actualiser</b> relance l'analyse en direct (non enregistrée, moins d'une seconde).</li>
+          <li><b>💾 Enregistrer</b> lance une analyse et la garde dans l'historique, pour comparer plus tard.</li>
+          <li>Cliquez sur une ligne de plugin pour voir tous ses formats, ses remarques et les actions possibles.</li>
+        </ul>
+        <pre>uv run vst-audit web            # cette interface (http://127.0.0.1:8765)
+uv run vst-audit scan           # même analyse, dans le terminal
+uv run vst-audit uad --suivi    # suivi UADx dans le terminal</pre>
+      </div>
+
+      <div class="panel">
+        <h2>Statuts</h2>
+        <p>Un plugin présent en plusieurs formats (AU, VST3, VST2) n'occupe qu'une ligne ; son statut est celui
+          de son <b>meilleur</b> format. Les formats cassés sont barrés.</p>
+        <table class="table compact" id="docs-statuses"></table>
+      </div>
+
+      <div class="panel">
+        <h2>Onglets</h2>
+        <dl>
+          <dt>Tableau de bord</dt><dd>Répartition des statuts, conseils « À faire », synthèse par éditeur.</dd>
+          <dt>Plugins</dt><dd>Tableau filtrable et triable. Panneau de détail : formats, chemins, architecture,
+            état dans Ableton et Logic, licence.</dd>
+          <dt>UAD</dt><dd>Sources de licence Universal Audio et suivi des UADx un par un.</dd>
+          <dt>Historique</dt><dd>Analyses enregistrées, ouverture d'une analyse passée, comparaison de deux analyses.</dd>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h2>Actions sur un plugin</h2>
+        <dl>
+          <dt>Définir le statut</dt><dd>Force un statut de licence pour tous les formats du plugin
+            (<code>data/overrides.json</code>), prioritaire sur la détection. « Revenir à l'auto » l'annule.</dd>
+          <dt>Finder</dt><dd>Sélectionne le bundle dans le Finder.</dd>
+          <dt>Signature</dt><dd>Vérifie la signature de code (<code>codesign</code>) et affiche le développeur.</dd>
+          <dt>auval</dt><dd>Lance la validation Apple d'une Audio Unit (peut prendre quelques secondes).</dd>
+          <dt>Lire le journal UA</dt><dd>UADx uniquement : relit l'état de licence écrit par le plugin.</dd>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h2>Sources de licence</h2>
+        <table class="table compact">
+          <tr><th>Éditeur</th><th>Source</th></tr>
+          <tr><td>Universal Audio (UADx)</td><td><code>~/Library/Logs/Universal Audio/UAPW_*.txt</code> : acheté, Spark, démo, démo expirée</td></tr>
+          <tr><td>Universal Audio (UAD-2)</td><td><code>UADSystemProfile_cur.txt</code>, généré Apollo branché (UAD Meter → System Info)</td></tr>
+          <tr><td>iZotope</td><td><code>~/Library/Preferences/com.izotope.*.Authorizations.plist</code></td></tr>
+          <tr><td>Tous</td><td>Statut défini dans l'interface, puis <code>config/licences.toml</code></td></tr>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>API</h2>
+          <a class="btn" href="/api/docs" target="_blank">Documentation interactive ↗</a>
+        </div>
+        <p>L'interface parle à l'outil d'analyse par une API JSON locale (127.0.0.1 uniquement).
+          La liste ci-dessous est lue en direct dans <code>/api/openapi.json</code>.</p>
+        <div class="table-wrap"><table class="table compact" id="docs-api"></table></div>
+      </div>
+
+      <div class="panel">
+        <h2>Fichiers</h2>
+        <table class="table compact">
+          <tr><td><code>data/history.sqlite</code></td><td>historique des analyses</td></tr>
+          <tr><td><code>data/scans/*.json</code></td><td>instantané lisible de chaque analyse</td></tr>
+          <tr><td><code>data/overrides.json</code></td><td>statuts définis depuis l'interface</td></tr>
+          <tr><td><code>data/uad_suivi.json</code></td><td>notes du suivi UADx</td></tr>
+          <tr><td><code>config/licences.toml</code></td><td>déclarations manuelles (voir licences.example.toml)</td></tr>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Panneau de détail -->
+  <div id="overlay" class="overlay hidden"></div>
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <button id="drawer-close" class="drawer-close" title="Fermer (Échap)">✕</button>
+    <div id="drawer-body"></div>
+  </aside>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

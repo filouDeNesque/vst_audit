@@ -1,0 +1,31 @@
+# Copiez ce fichier en config/licences.toml puis adaptez-le.
+# Ces déclarations sont prioritaires sur la détection automatique.
+#
+# Statuts possibles : "licencié", "gratuit", "démo", "non acquis", "clé requise"
+# Les noms sont comparés sans tenir compte de la casse ni de la ponctuation ;
+# un motif sans * est cherché n'importe où dans le nom ("1176" trouve "UAD UA 1176LN Legacy").
+
+[editeurs]
+# Tout ce qui vient de l'éditeur reçoit ce statut
+"Valhalla DSP" = "licencié"
+# "Tokyo Dawn Labs" = "gratuit"
+
+[plugins]
+# statut = [liste de noms ou de motifs]
+"licencié"    = ["Kontakt 8", "Massive X"]
+"clé requise" = []   # ex. plugins dont vous avez perdu la clé en changeant d'ordinateur
+"gratuit"     = ["TDR Nova", "IVGI2"]
+
+[uad]
+# Les UADx (achats, Spark, démos) et les UAD-2 (profil système) sont détectés automatiquement :
+# voir `vst-audit uad`. Cette liste ne sert que pour ce qui reste « à vérifier ».
+# Vos plugins UAD achetés (my.uaudio.com → My Products).
+# Les plugins "UAD ..." (UAD-2, DSP) et "UADx ..." (natifs) sont comparés au nom affiché.
+possedes = [
+  # "Pultec",
+  # "1176",
+  # "LA-2A",
+]
+# true : tout plugin UAD sans licence détectée ni déclarée ci-dessus est classé "non acquis".
+# Laissez false tant que la liste n'est pas complète (ils resteront "à vérifier").
+strict = false
