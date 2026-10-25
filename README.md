@@ -3,7 +3,7 @@
 Analyseur des plugins audio installés sur macOS (VST2, VST3, AU, CLAP). Pour chaque plugin, il dit :
 
 - s'il est **techniquement valide** : bundle complet, binaire Apple Silicon ou Intel, signature, quarantaine ;
-- s'il **fonctionne dans les DAW** : base de plugins d'Ableton Live, journaux de validation AU de Logic ;
+- s'il **fonctionne dans les DAW** : base de plugins d'Ableton Live, journaux de validation AU de Logic, liste de plugins de MPC 3 ;
 - son **statut de licence** : licencié, gratuit, démo, non acquis, clé requise ou inconnu.
 
 Chaque analyse est enregistrée, ce qui permet de **comparer** une analyse avec la précédente.
@@ -57,7 +57,9 @@ Actions disponibles depuis le détail d'un plugin :
 - valider une Audio Unit (`auval`) ;
 - relire le journal de licence d'un UADx.
 
-« ⟳ Actualiser » relance l'analyse en direct, sans l'enregistrer. « 💾 Enregistrer » l'ajoute à l'historique et affiche les changements depuis l'analyse précédente. Les liens sont directs : `#plugins`, `#uad`, `#plugins&plugin=<clé>`.
+L'apparence reprend celle d'Ableton Live : les couleurs du thème choisi dans Live (lu dans `Preferences.cfg` et dans les fichiers `.ask` de l'application) et la police Ableton Sans, servie depuis l'application Live installée (rien n'est copié dans le projet). Un sélecteur permet d'essayer les autres thèmes de Live ; sans Live, les couleurs de « Default Dark Neutral Medium » s'appliquent.
+
+« Actualiser » relance l'analyse en direct, sans l'enregistrer. « Enregistrer » l'ajoute à l'historique et affiche les changements depuis l'analyse précédente. Les liens sont directs : `#plugins`, `#uad`, `#plugins&plugin=<clé>`.
 
 ### API
 
@@ -117,8 +119,10 @@ Tout est stocké dans `data/`, qui n'est pas versionné :
 | Plugins | `/Library/Audio/Plug-Ins/{VST,VST3,Components,CLAP}` et `~/Library/Audio/Plug-Ins/…` (y compris les sous-dossiers) |
 | Ableton Live | `~/Library/Application Support/Ableton/Live Database/Live-plugins-*.db` (lecture seule) |
 | Logic | `~/Library/Caches/AudioUnitCache/Logs/AUScan*.plist` |
+| MPC 3 | `~/Library/Application Support/Akai/MPC 3/MPC 3.settings` : plugins scannés, rejetés au scan, désactivés |
 | iZotope | `~/Library/Preferences/com.izotope.*.Authorizations.plist` |
 | Universal Audio | `~/Library/Logs/Universal Audio/UAPW_*.txt` (UADx), `UADSystemProfile_cur.txt` (UAD-2) |
+| AIR / inMusic | `~/Library/Application Support/com.inmusicbrands.softwareunlock/` : un fichier par produit déverrouillé (ex. `AKMP3` = MPC 3) |
 
 Codes d'Ableton (`scanstate`) : 1 signifie que le scan a réussi. Les codes 2 et 3 désignent un plugin rejeté par Live. Leur sens exact n'est pas documenté : le code 3 correspond souvent à un binaire Intel, le code 2 à un plugin qui a planté pendant le scan.
 
@@ -127,8 +131,8 @@ Codes d'Ableton (`scanstate`) : 1 signifie que le scan a réussi. Les codes 2 et
 ```
 src/vst_audit/
   discovery.py     recherche des bundles, Info.plist, architecture Mach-O, signature, quarantaine
-  hosts/           état des plugins vu par chaque DAW (ableton.py, logic.py)
-  licenses/        détecteurs de licence, essayés dans l'ordre : manual → uad → izotope → free
+  hosts/           état des plugins vu par chaque DAW (ableton.py, logic.py, mpc.py)
+  licenses/        détecteurs de licence, essayés dans l'ordre : manual → uad → izotope → inmusic → free
   grouping.py      regroupement des formats d'un même plugin
   store.py         historique SQLite et instantanés JSON
   diff.py          comparaison de deux analyses
@@ -140,6 +144,7 @@ src/vst_audit/
   overrides.py     statuts définis depuis l'interface
   suivi.py         suivi UADx (terminal et web)
   actions.py       Finder, codesign, auval, journal UA
+  theme.py         thème Ableton Live (couleurs .ask, police Ableton Sans) pour l'interface
   vendors.py       outil ou compte où récupérer ses licences, par éditeur
 ```
 
@@ -150,7 +155,6 @@ src/vst_audit/
 ## Pistes pour la suite
 
 - **Masquer les plugins non acquis** (UAD) dans Logic, Ableton et MPC : les déplacer vers un dossier de quarantaine, avec possibilité de restaurer.
-- **MPC 3** : lire sa liste de plugins.
 - **`auval`** : valider les AU à la demande (`auval -v type sous-type fabricant`).
 - **iLok / PACE** : repérer les plugins protégés par iLok, dont la licence est liée au compte et donc récupérable.
 - Détecteurs pour d'autres éditeurs : Native Instruments, Arturia, Softube, Slate…

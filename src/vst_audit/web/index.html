@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>vst-audit</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='2' fill='%23363636'/><path fill='%23ffad56' d='M2 9h4v3H2zM6 4h4v3H6zM10 7h4v3h-4z'/></svg>">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/theme.css" id="theme-css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="logo">🎛</span> vst-audit</div>
+    <div class="brand"><span data-icon="logo" data-size="lg"></span> vst-audit</div>
     <nav class="tabs" role="tablist">
       <button class="tab active" data-view="dashboard">Tableau de bord</button>
       <button class="tab" data-view="plugins">Plugins</button>
@@ -19,9 +20,10 @@
     </nav>
     <div class="source">
       <span id="source-label" class="source-label">…</span>
-      <button id="btn-live" class="btn ghost hidden" title="Revenir à l'analyse en direct">↺ Direct</button>
-      <button id="btn-refresh" class="btn" title="Relancer l'analyse en direct">⟳ Actualiser</button>
-      <button id="btn-save" class="btn primary" title="Lancer une analyse et l'enregistrer dans l'historique">💾 Enregistrer</button>
+      <button id="btn-live" class="btn ghost hidden" title="Revenir à l'analyse en direct"><span data-icon="play"></span> Direct</button>
+      <button id="btn-refresh" class="btn" title="Relancer l'analyse en direct"><span data-icon="refresh"></span> Actualiser</button>
+      <button id="btn-save" class="btn primary" title="Lancer une analyse et l'enregistrer dans l'historique"><span data-icon="save"></span> Enregistrer</button>
+      <select id="theme-select" class="theme-select hidden" title="Thème Ableton Live"></select>
     </div>
   </header>
 
@@ -121,8 +123,9 @@
           <code>~/Library/Audio/Plug-Ins</code> (VST2, VST3, AU, CLAP). Aucun plugin n'est chargé ni modifié :
           seuls les fichiers sur disque sont lus.</p>
         <ul>
-          <li><b>⟳ Actualiser</b> relance l'analyse en direct (non enregistrée, moins d'une seconde).</li>
-          <li><b>💾 Enregistrer</b> lance une analyse et la garde dans l'historique, pour comparer plus tard.</li>
+          <li><b>Actualiser</b> relance l'analyse en direct (non enregistrée, moins d'une seconde).</li>
+          <li><b>Enregistrer</b> lance une analyse et la garde dans l'historique, pour comparer plus tard.</li>
+          <li>DAW lues : Ableton Live (base de plugins), Logic (validation AU), MPC 3 (liste de plugins scannés, rejetés, désactivés).</li>
           <li>Cliquez sur une ligne de plugin pour voir tous ses formats, ses remarques et les actions possibles.</li>
         </ul>
         <pre>uv run vst-audit web            # cette interface (http://127.0.0.1:8765)
@@ -166,6 +169,7 @@ uv run vst-audit uad --suivi    # suivi UADx dans le terminal</pre>
           <tr><th>Éditeur</th><th>Source</th></tr>
           <tr><td>Universal Audio (UADx)</td><td><code>~/Library/Logs/Universal Audio/UAPW_*.txt</code> : acheté, Spark, démo, démo expirée</td></tr>
           <tr><td>Universal Audio (UAD-2)</td><td><code>UADSystemProfile_cur.txt</code>, généré Apollo branché (UAD Meter → System Info)</td></tr>
+          <tr><td>AIR Music Technology / inMusic</td><td><code>~/Library/Application Support/com.inmusicbrands.softwareunlock/</code> : un fichier par produit déverrouillé (codes non publics)</td></tr>
           <tr><td>iZotope</td><td><code>~/Library/Preferences/com.izotope.*.Authorizations.plist</code></td></tr>
           <tr><td>Tous</td><td>Statut défini dans l'interface, puis <code>config/licences.toml</code></td></tr>
         </table>
@@ -174,11 +178,18 @@ uv run vst-audit uad --suivi    # suivi UADx dans le terminal</pre>
       <div class="panel">
         <div class="panel-head">
           <h2>API</h2>
-          <a class="btn" href="/api/docs" target="_blank">Documentation interactive ↗</a>
+          <a class="btn" href="/api/docs" target="_blank">Documentation interactive <span data-icon="external"></span></a>
         </div>
         <p>L'interface parle à l'outil d'analyse par une API JSON locale (127.0.0.1 uniquement).
           La liste ci-dessous est lue en direct dans <code>/api/openapi.json</code>.</p>
         <div class="table-wrap"><table class="table compact" id="docs-api"></table></div>
+      </div>
+
+      <div class="panel">
+        <h2>Apparence</h2>
+        <p>Les couleurs reprennent le thème choisi dans Ableton Live (lu dans <code>Preferences.cfg</code> et dans les
+          fichiers <code>.ask</code> de l'application) et la police est Ableton Sans, servie depuis l'application Live
+          installée. Le sélecteur en haut à droite permet d'essayer les autres thèmes de Live.</p>
       </div>
 
       <div class="panel">
@@ -197,7 +208,7 @@ uv run vst-audit uad --suivi    # suivi UADx dans le terminal</pre>
   <!-- Panneau de détail -->
   <div id="overlay" class="overlay hidden"></div>
   <aside id="drawer" class="drawer" aria-hidden="true">
-    <button id="drawer-close" class="drawer-close" title="Fermer (Échap)">✕</button>
+    <button id="drawer-close" class="drawer-close" title="Fermer (Échap)"><span data-icon="close"></span></button>
     <div id="drawer-body"></div>
   </aside>
 

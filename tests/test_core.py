@@ -129,3 +129,32 @@ def test_ua_system_profile_matching():
     assert match_product("UAD UA 1176LN Legacy", products)[0] == License.LICENSED
     assert match_product("UAD Fairchild 670", products)[0] == License.NOT_OWNED
     assert match_product("UAD Neve 1073", products) is None
+
+
+def test_mpc_settings_states():
+    from vst_audit.hosts.mpc import parse, plugin_ref
+
+    text = '''<KNOWNPLUGINS>
+      <PLUGIN name="Comp" format="VST3" file="/x/Comp.vst3"/>
+      <PLUGIN name="Comp" format="AudioUnit"
+              file="AudioUnit:Effects/aufx,Comp,Acme"/>
+      <PLUGIN name="Old" format="VST" file="/x/Old.vst"/>
+      <BLACKLISTED id="/x/Old.vst"/>
+    </KNOWNPLUGINS>
+    <VALUE name="DisabledPlugins.List"><PluginIdList><PLUGIN id="/x/Comp.vst3"/></PluginIdList></VALUE>'''
+    states = parse(text)
+    au = make("Comp", fmt=Format.AU, extra={"au_id": "aufx Comp Acme"})
+    assert states[plugin_ref(au)] == HostState.OK
+    assert states["/x/Old.vst"] == HostState.FAILED
+    assert states["/x/Comp.vst3"] == HostState.DISABLED
+
+
+def test_inmusic_unlock_files(tmp_path):
+    from vst_audit.licenses import inmusic
+
+    (tmp_path / "2.1.0").mkdir()
+    (tmp_path / "2.1.0" / "AKMP3").write_text("x")
+    (tmp_path / "SESSION").write_text("x")
+    (tmp_path / "AIVD1").write_text("x")
+    assert inmusic.unlocked_products.__wrapped__(tmp_path) == ["AIVD1", "AKMP3"]
+    assert inmusic.describe(["AKMP3", "AIVD1"]) == "AKMP3 (MPC 3), AIVD1"

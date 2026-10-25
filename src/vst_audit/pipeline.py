@@ -34,6 +34,7 @@ def clear_caches() -> None:
     ua_sources.system_profile.cache_clear()
     suivi.notes.cache_clear()
     overrides.index.cache_clear()
+    licenses.inmusic.unlocked_products.cache_clear()
 
 
 def check_signature(p: Plugin) -> None:

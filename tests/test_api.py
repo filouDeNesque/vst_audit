@@ -81,3 +81,21 @@ def test_tests_never_touch_real_data(client):
 def test_web_page_served(client):
     assert "vst-audit" in client.get("/").text
     assert client.get("/static/app.js").status_code == 200
+
+
+def test_theme_css_from_live_files(tmp_path, monkeypatch):
+    from vst_audit import theme
+
+    app = tmp_path / "Ableton Live 12 Suite.app" / "Contents/App-Resources"
+    (app / "Themes").mkdir(parents=True)
+    (app / "Fonts").mkdir()
+    (app / "Themes" / "Mon Thème.ask").write_text(
+        '<Theme><Desktop Value="#393939" /><SurfaceBackground Value="#4f4f4f" />'
+        '<ChosenDefault Value="#ff9c39" /><ChosenPlay Value="#00d38d" /></Theme>')
+    monkeypatch.setattr(theme, "APPS", tmp_path)
+    theme.live_app.cache_clear()
+    css = theme.css("Mon Thème")
+    assert "--bg: #393939;" in css and "--accent: #ff9c39;" in css and "color-scheme: dark" in css
+    assert "@font-face" not in css  # pas de police Ableton dans ce faux Live
+    assert theme.font_path("../../etc/passwd") is None
+    theme.live_app.cache_clear()

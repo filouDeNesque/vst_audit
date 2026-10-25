@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 
 from ..models import Plugin
-from . import ableton, logic
+from . import ableton, logic, mpc
 
 log = logging.getLogger(__name__)
 
-HOSTS = [ableton, logic]
+HOSTS = [ableton, logic, mpc]
 
 
 def annotate(plugins: list[Plugin]) -> list[str]:

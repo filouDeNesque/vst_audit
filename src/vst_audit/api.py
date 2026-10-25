@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, actions, config, insights, overrides, pipeline, store, suivi
+from . import __version__, actions, config, insights, overrides, pipeline, store, suivi, theme
 from .diff import ScanDiff, compare
 from .grouping import PluginGroup, group_plugins
 from .licenses import ua_sources
@@ -328,6 +328,30 @@ def uad_forget(plugin_id: str) -> dict:
         suivi.save(entries)
         live.get(refresh=True)
     return {"ok": True}
+
+
+# --- Apparence Ableton -----------------------------------------------------------------------
+
+@app.get("/api/theme", tags=["général"], summary="Thèmes Live disponibles et thème actif")
+def theme_info() -> dict:
+    app_path = theme.live_app()
+    return {"live": app_path.name if app_path else None, "active": theme.active_theme(),
+            "available": theme.available_themes(), "font": bool(theme.font_path("AbletonSansSmall-Regular.ttf"))}
+
+
+@app.get("/theme.css", include_in_schema=False)
+def theme_css(name: str | None = None) -> Response:
+    if name and name not in theme.available_themes():
+        raise HTTPException(404, "thème inconnu")
+    return Response(theme.css(name), media_type="text/css", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/fonts/{name}", include_in_schema=False)
+def font(name: str) -> FileResponse:
+    path = theme.font_path(name)  # liste blanche : seules les polices Ableton Sans de l'app Live
+    if not path:
+        raise HTTPException(404, "police indisponible")
+    return FileResponse(path, media_type="font/ttf", headers={"Cache-Control": "max-age=86400"})
 
 
 # --- Interface web --------------------------------------------------------------------------

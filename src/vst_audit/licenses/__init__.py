@@ -11,11 +11,11 @@ import logging
 
 from ..config import Config
 from ..models import Plugin
-from . import free, izotope, manual, uad
+from . import free, inmusic, izotope, manual, uad
 
 log = logging.getLogger(__name__)
 
-DETECTORS = [manual, uad, izotope, free]
+DETECTORS = [manual, uad, izotope, inmusic, free]
 
 
 def detect_all(plugins: list[Plugin], cfg: Config) -> None:

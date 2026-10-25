@@ -1,17 +1,41 @@
 "use strict";
 
 // Statuts, dans l'ordre de gravité (identique à models.Verdict)
+// Icônes géométriques monochromes (16×16), dans l'esprit de Live
+const ICONS = {
+  logo: '<path opacity=".35" d="M3 1h2v14H3zM7 1h2v14H7zM11 1h2v14h-2z"/><path d="M2 9h4v3H2zM6 4h4v3H6zM10 7h4v3h-4z"/>',
+  refresh: '<path d="M8 2a6 6 0 1 0 5.66 8h-2.17A4 4 0 1 1 8 4c1.1 0 2.1.45 2.83 1.17L9 7h5V2l-1.76 1.76A5.98 5.98 0 0 0 8 2z"/>',
+  save: '<path fill-rule="evenodd" d="M2 2h9.5L14 4.5V14H2zm2 1.5V6h6.5V3.5zM5 9v3.5h6V9z"/>',
+  play: '<path d="M4 2.5v11L13 8z"/>',
+  folder: '<path d="M1.5 3h5L8 5h6.5v8.5h-13z"/>',
+  copy: '<path d="M5 1h9v9h-2V3H5zM2 5h8v9H2z"/>',
+  seal: '<path fill-rule="evenodd" d="M8 1l6 2.5V8c0 3.5-2.6 6-6 7-3.4-1-6-3.5-6-7V3.5zm-1 9.5L11.5 6l-1-1L7 8.5 5.5 7l-1 1z"/>',
+  pulse: '<path d="M1 7.2h3.1L6 2.6l3 9.2 1.9-4.6H15v1.6h-3.1L9 16 6 6.8 5.1 8.8H1z"/>',
+  close: '<path d="M3.4 2.3 8 6.9l4.6-4.6 1.1 1.1L9.1 8l4.6 4.6-1.1 1.1L8 9.1l-4.6 4.6-1.1-1.1L6.9 8 2.3 3.4z"/>',
+  key: '<path fill-rule="evenodd" d="M10.5 1.5a4 4 0 0 0-3.8 5.3L1.5 12v2.5H4V13h1.5v-1.5H7l1.2-1.2A4 4 0 1 0 10.5 1.5zm1 2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/>',
+  noentry: '<path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zm0 2a4.5 4.5 0 0 1 3.6 7.2L5.3 4.4A4.5 4.5 0 0 1 8 3.5zM4.4 5.3l6.3 6.3A4.5 4.5 0 0 1 4.4 5.3z"/>',
+  half: '<path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zm0 2v9a4.5 4.5 0 0 1 0-9z"/>',
+  pause: '<path d="M4 3h3v10H4zM9 3h3v10H9z"/>',
+  question: '<path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM7.1 10.6h1.8v1.8H7.1zM8 3.8c1.5 0 2.7 1 2.7 2.4 0 1-.6 1.6-1.3 2-.4.3-.5.5-.5.9v.3H7.2V9c0-.9.4-1.4 1-1.8.5-.3.8-.6.8-1 0-.5-.4-.9-1-.9s-1 .4-1.1 1H5.3C5.4 4.9 6.5 3.8 8 3.8z"/>',
+  check: '<path d="M6.2 12.3 2.3 8.4l1.4-1.4 2.5 2.5 6.1-6.1 1.4 1.4z"/>',
+  info: '<path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM7.1 4h1.8v1.8H7.1zm0 3h1.8v5H7.1z"/>',
+  scissors: '<path fill-rule="evenodd" d="M4 1.5a2.5 2.5 0 1 0 1.6 4.4L7.2 8l-1.6 2.1A2.5 2.5 0 1 0 6.9 11.3L8.3 9.5 13 15h2L9.4 8.1 15 1h-2L8.3 6.6 6.9 4.7A2.5 2.5 0 0 0 4 1.5zm0 1.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 8a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>',
+  external: '<path d="M9 2h5v5h-1.5V4.6L7.6 9.5 6.5 8.4l4.9-4.9H9zM2 4h5v1.5H3.5v7h7V9H12v5H2z"/>',
+};
+const ic = (name, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+
 const VERDICTS = [
-  { v: "invalide", icon: "✖", c: "--v-invalide", desc: "Aucun format ne fonctionne (binaire manquant, rejeté par Ableton, échec Logic…)" },
-  { v: "clé requise", icon: "⚿", c: "--v-cle", desc: "À réactiver : clé perdue, changement d'ordinateur" },
-  { v: "non acquis", icon: "∅", c: "--v-nonacquis", desc: "Installé mais jamais acheté (typiquement le catalogue UAD)" },
-  { v: "démo", icon: "◐", c: "--v-demo", desc: "Version d'essai en cours" },
-  { v: "désactivé", icon: "⏸", c: "--v-desactive", desc: "Désactivé dans une DAW" },
-  { v: "à vérifier", icon: "?", c: "--v-verifier", desc: "Techniquement OK, licence non déterminée" },
-  { v: "fonctionnel", icon: "✔", c: "--v-ok", desc: "OK et licence confirmée (ou gratuit)" },
+  { v: "invalide", icon: "close", c: "--v-invalide", desc: "Aucun format ne fonctionne (binaire manquant, rejeté par Ableton, échec Logic…)" },
+  { v: "clé requise", icon: "key", c: "--v-cle", desc: "À réactiver : clé perdue, changement d'ordinateur" },
+  { v: "non acquis", icon: "noentry", c: "--v-nonacquis", desc: "Installé mais jamais acheté (typiquement le catalogue UAD)" },
+  { v: "démo", icon: "half", c: "--v-demo", desc: "Version d'essai en cours" },
+  { v: "désactivé", icon: "pause", c: "--v-desactive", desc: "Désactivé dans une DAW" },
+  { v: "à vérifier", icon: "question", c: "--v-verifier", desc: "Techniquement OK, licence non déterminée" },
+  { v: "fonctionnel", icon: "check", c: "--v-ok", desc: "OK et licence confirmée (ou gratuit)" },
 ];
 const V = Object.fromEntries(VERDICTS.map((x, i) => [x.v, { ...x, rank: i }]));
 const LICENSES = ["licencié", "gratuit", "démo", "non acquis", "clé requise"];
+const TIP_ICON = { "clé": "key", uad: "info", non_acquis: "noentry", invalide: "close", nettoyage: "scissors" };
 const TIP_COLOR = { "clé": "--v-cle", uad: "--v-verifier", non_acquis: "--v-nonacquis", invalide: "--v-invalide", nettoyage: "--v-invalide" };
 
 const state = {
@@ -29,7 +53,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const color = (verdict) => `var(${(V[verdict] || V["à vérifier"]).c})`;
-const badge = (verdict) => `<span class="badge" style="--c:${color(verdict)}">${V[verdict]?.icon ?? "?"} ${esc(verdict)}</span>`;
+const badge = (verdict) => `<span class="badge" data-v="${esc(verdict)}" style="--c:${color(verdict)}">${ic(V[verdict]?.icon ?? "question")} ${esc(verdict)}</span>`;
 const fmtChips = (formats) => formats.map((f) =>
   `<span class="fmt ${f.verdict === "invalide" ? "broken" : ""}" style="--c:${color(f.verdict)}" title="${esc(f.format)} : ${esc(f.verdict)}">${esc(f.format)}</span>`).join("");
 const dateFr = (iso) => iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "";
@@ -96,13 +120,13 @@ function renderDashboard() {
     `<button class="card static" style="--c:var(--accent)"><div class="n">${summary.unique}</div><div class="l">plugins uniques · ${summary.bundles} bundles</div></button>` +
     summary.verdicts.map((x) =>
       `<button class="card" data-verdict="${esc(x.verdict)}" style="--c:${color(x.verdict)}" title="${esc(V[x.verdict].desc)}">
-        <div class="n">${x.count}</div><div class="l">${V[x.verdict].icon} ${esc(x.verdict)}</div></button>`).join("");
+        <div class="n">${x.count}</div><div class="l">${ic(V[x.verdict].icon)} ${esc(x.verdict)}</div></button>`).join("");
   $("#distribution").innerHTML = summary.verdicts.filter((x) => x.count)
     .map((x) => `<div style="--c:${color(x.verdict)};width:${(100 * x.count) / total}%" title="${esc(x.verdict)} : ${x.count}"></div>`).join("");
 
   $("#todo").innerHTML = summary.todo.length
     ? summary.todo.map((t) => `<li class="${t.filter ? "link" : ""}" data-filter="${esc(t.filter)}" data-kind="${esc(t.kind)}">
-        <span class="ic" style="--c:var(${TIP_COLOR[t.kind]})">${esc(t.icon)}</span>
+        <span style="--c:var(${TIP_COLOR[t.kind]})">${ic(TIP_ICON[t.kind])}</span>
         <span><b>${esc(t.title)}</b> ${esc(t.text)}</span></li>`).join("")
     : `<li class="muted">Rien à signaler.</li>`;
 
@@ -111,7 +135,7 @@ function renderDashboard() {
   $("#hosts").textContent = scan.hosts.length ? scan.hosts.join(", ") : "aucune";
 
   $("#vendors-table").innerHTML =
-    `<thead><tr><th>Éditeur</th>${VERDICTS.map((x) => `<th class="num" title="${esc(x.v)}" style="color:${color(x.v)}">${x.icon}</th>`).join("")}<th class="num">Total</th></tr></thead>
+    `<thead><tr><th>Éditeur</th>${VERDICTS.map((x) => `<th class="num" title="${esc(x.v)}" style="color:${color(x.v)}">${ic(x.icon)}</th>`).join("")}<th class="num">Total</th></tr></thead>
      <tbody>${summary.vendors.map((r) => `<tr data-vendor="${esc(r.vendor)}" style="cursor:pointer">
        <td class="name">${esc(r.vendor)}</td>
        ${VERDICTS.map((x) => `<td class="num" style="color:${r.counts[x.v] ? color(x.v) : "var(--muted)"}">${r.counts[x.v] || "·"}</td>`).join("")}
@@ -146,7 +170,7 @@ function renderPlugins() {
 
   const counts = Object.fromEntries(state.data.summary.verdicts.map((x) => [x.verdict, x.count]));
   $("#verdict-chips").innerHTML = VERDICTS.map((x) =>
-    `<span class="badge chip ${state.filters.verdicts.has(x.v) ? "on" : ""}" data-verdict="${esc(x.v)}" style="--c:${color(x.v)}">${x.icon} ${esc(x.v)} · ${counts[x.v] || 0}</span>`).join("");
+    `<span class="badge chip ${state.filters.verdicts.has(x.v) ? "on" : ""}" data-verdict="${esc(x.v)}" data-v="${esc(x.v)}" style="--c:${color(x.v)}">${ic(x.icon)} ${esc(x.v)} · ${counts[x.v] || 0}</span>`).join("");
 
   $$("#plugins-table th[data-sort]").forEach((th) => {
     th.classList.toggle("sorted", th.dataset.sort === state.sort.key);
@@ -211,8 +235,8 @@ function renderDrawer(d) {
 
   $("#drawer-body").innerHTML = `
     <h1>${esc(d.name)}</h1>
-    <div class="muted">${esc(d.vendor)}${d.uad_family ? ` · ${esc(d.uad_family)}` : ""}</div>
-    <p>${badge(d.verdict)} ${fmtChips(d.formats)}</p>
+    <div class="sub">${esc(d.vendor)}${d.uad_family ? ` · ${esc(d.uad_family)}` : ""}
+      <div style="margin-top:6px">${badge(d.verdict)} ${fmtChips(d.formats)}</div></div>
     ${past ? `<p class="muted small">Détail issu de l'analyse en direct (vous consultez une analyse passée).</p>` : ""}
 
     <h3>Licence</h3>
@@ -235,7 +259,7 @@ function renderDrawer(d) {
         <dt>Identifiant</dt><dd><code>${esc(d.ua_plugin_id)}</code></dd>
         ${d.ua_suivi ? `<dt>Suivi</dt><dd>${esc(d.ua_suivi.label)} · ${esc(d.ua_suivi.date.slice(0, 10))}${d.ua_suivi.note ? ` · ${esc(d.ua_suivi.note)}` : ""}</dd>` : ""}
       </dl>
-      <div class="actions"><button class="btn" data-ua-check="${esc(d.ua_plugin_id)}">Lire le journal UA</button></div>
+      <div class="actions"><button class="btn" data-ua-check="${esc(d.ua_plugin_id)}">${ic("refresh")} Lire le journal UA</button></div>
       <div class="ua-result"></div>` : ""}
 
     ${d.issues.length ? `<h3>Remarques</h3>${d.issues.map((i) => `<div class="issue">${esc(i)}</div>`).join("")}` : ""}
@@ -255,10 +279,10 @@ function renderDrawer(d) {
           ${item.extra.au_id ? `<dt>Composant AU</dt><dd><code>${esc(item.extra.au_id)}</code></dd>` : ""}
         </dl>
         <div class="actions">
-          <button class="btn small" data-act="reveal" data-n="${n}">📂 Finder</button>
-          <button class="btn small" data-act="copy" data-n="${n}">⧉ Copier le chemin</button>
-          <button class="btn small" data-act="signature" data-n="${n}">🔏 Signature</button>
-          ${item.extra.au_id ? `<button class="btn small" data-act="auval" data-n="${n}">🧪 auval</button>` : ""}
+          <button class="btn small" data-act="reveal" data-n="${n}">${ic("folder")} Finder</button>
+          <button class="btn small" data-act="copy" data-n="${n}">${ic("copy")} Copier le chemin</button>
+          <button class="btn small" data-act="signature" data-n="${n}">${ic("seal")} Signature</button>
+          ${item.extra.au_id ? `<button class="btn small" data-act="auval" data-n="${n}">${ic("pulse")} auval</button>` : ""}
         </div>
         <div class="result hidden" data-result="${n}"></div>
       </div>`).join("")}
@@ -311,12 +335,12 @@ async function runAction(btn, item) {
       toast("Ouvert dans le Finder");
     } else if (act === "signature") {
       const r = await api("POST", "/api/plugin/signature", { path: item.path });
-      show(r.ok, `<b>${r.ok ? "✔ Signature valide" : "✖ Signature invalide"}</b>${r.ok ? "" : ` : ${esc(r.message)}`}
+      show(r.ok, `<b>${r.ok ? `${ic("check")} Signature valide` : `${ic("close")} Signature invalide`}</b>${r.ok ? "" : ` : ${esc(r.message)}`}
         <dl class="kv" style="margin-top:6px">${Object.entries(r.details).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`);
     } else if (act === "auval") {
       show(true, "auval en cours… (quelques secondes)");
       const r = await api("POST", "/api/plugin/auval", { path: item.path });
-      show(r.ok, `<b>${r.ok ? "✔" : "✖"} ${esc(r.summary)}</b><details><summary>Sortie complète</summary><pre>${esc(r.output)}</pre></details>`);
+      show(r.ok, `<b>${ic(r.ok ? "check" : "close")} ${esc(r.summary)}</b><details><summary>Sortie complète</summary><pre>${esc(r.output)}</pre></details>`);
     }
   });
 }
@@ -356,10 +380,10 @@ async function renderUad() {
         <td><div class="actions" style="margin:0">
           <button class="btn small" data-check>Lire le journal</button>
           ${choices.map(([v, l]) => `<button class="btn small ghost" data-note="${v}">${l}</button>`).join("")}
-          ${i.entry ? `<button class="btn small ghost" data-forget title="Effacer la note">✕</button>` : ""}
+          ${i.entry ? `<button class="btn small ghost" data-forget title="Effacer la note">${ic("close")}</button>` : ""}
         </div></td>
       </tr>`).join("")}</tbody>`
-    : `<tbody><tr><td class="empty">Tous les UADx ont un état connu par leur journal. 🎉</td></tr></tbody>`;
+    : `<tbody><tr><td class="empty">Tous les UADx ont un état connu par leur journal.</td></tr></tbody>`;
 
   $$("#uad-suivi tr[data-pid]").forEach((tr) => {
     const pid = tr.dataset.pid;
@@ -420,7 +444,7 @@ async function renderHistory() {
       <td class="num"><b>${s.id}</b></td><td>${dateFr(s.started_at)}</td><td class="muted">${esc(s.machine)}</td>
       <td class="num">${s.total}</td><td class="num">${s.duration_s.toFixed(1)} s</td><td>${esc(s.hosts.join(", "))}</td>
       <td><button class="btn small" data-open="${s.id}">Ouvrir</button></td></tr>`).join("")}</tbody>`
-    : `<tbody><tr><td class="empty">Aucune analyse enregistrée. Cliquez sur « 💾 Enregistrer ».</td></tr></tbody>`;
+    : `<tbody><tr><td class="empty">Aucune analyse enregistrée. Cliquez sur « Enregistrer ».</td></tr></tbody>`;
 
   $$("[data-scan]").forEach((cb) => cb.onchange = () => {
     const id = +cb.dataset.scan;
@@ -559,5 +583,25 @@ function routeFromHash() {
   if (plugin) openPlugin(decodeURIComponent(plugin.slice(7)));
 }
 
+// Thème Ableton Live : celui de Live par défaut, ou celui choisi ici (mémorisé dans ce navigateur)
+async function setupTheme() {
+  let saved = "";
+  try { saved = localStorage.getItem("vst-audit-theme") || ""; } catch {}
+  const info = await api("GET", "/api/theme").catch(() => null);
+  if (!info?.available.length) return;
+  const sel = $("#theme-select");
+  sel.innerHTML = `<option value="">Thème Live : ${esc(info.active || "par défaut")}</option>` +
+    info.available.map((t) => `<option ${t === saved ? "selected" : ""}>${esc(t)}</option>`).join("");
+  sel.classList.remove("hidden");
+  const apply = (name) => { $("#theme-css").href = name ? `/theme.css?name=${encodeURIComponent(name)}` : "/theme.css"; };
+  if (saved && info.available.includes(saved)) apply(saved);
+  sel.onchange = () => {
+    apply(sel.value);
+    try { sel.value ? localStorage.setItem("vst-audit-theme", sel.value) : localStorage.removeItem("vst-audit-theme"); } catch {}
+  };
+}
+
+$$("[data-icon]").forEach((el) => { el.outerHTML = ic(el.dataset.icon, el.dataset.size || ""); });
 bind();
+setupTheme();
 loadAnalysis().then(routeFromHash).catch((e) => toast(e.message, true));

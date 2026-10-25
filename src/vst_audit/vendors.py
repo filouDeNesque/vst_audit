@@ -16,6 +16,7 @@ PORTALS = {
     "slate": "Slate Digital Connect / iLok",
     "akai": "inMusic Software Center",
     "inmusic": "inMusic Software Center",
+    "air music": "inMusic Software Center (compte inMusic / AIR)",
     "splice": "application Splice",
     "klevgrand": "compte Klevgrand",
     "tokyo dawn": "compte Tokyo Dawn Labs",
